@@ -1,0 +1,283 @@
+---
+title: "Laboratory 1 Report"
+author: "Greeshma Jeev Koothuparambil and Olayemi Morrison"
+date: "05/09/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This report is submitted by Greeshma Jeev Koothuparambil and Olayemi Morrison as a part of Laboratory 1 of Visualization (732A98) Course for the 2023 Autumn Semester.
+
+>Assignment 1
+
+![The modified Tree using InkScape](/home/jeev93/R/tree.png)
+
+***
+
+>Assignment 2
+
+Following are the libraries used for the successful completion of this assignment:  
+ggplot2  
+gridExtra  
+dplyr  
+cowplot  
+ggpubr  
+plotly    
+shiny
+  
+Here is how we loaded our libraries:  
+
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+library(cowplot)
+library(ggpubr)
+library(plotly)
+library(shiny)
+```
+***
+**1. Read data from SENIC.txt into R**
+```{r message=FALSE, warning=FALSE}
+#reading the file and renaming the columns for easy readability.
+
+df <- read.table("SENIC.txt")
+description <- c("ID", "Length_of_Stay", "Age",
+                 "Infection_Risk", "Routine_Culturing_Ratio", "Routine_Chest_Xray_Ratio",
+                 "Number_of_Beds", "Medical_School_Affiliation", "Region",
+                 "Average_Daily_Census", "Number_of_Nurses", "Available_Facilities_And_Services")
+colnames(df)<- description
+```
+The loaded dataframe looks like this:
+```{r echo= FALSE}
+knitr::kable(
+  df[1:6, 1:6]
+)
+knitr::kable(
+  df[1:6, 7:12]
+)
+```
+It has 113 observations and 12 variables namely:  
+ID, Length of Stay ,  Age ,Infection Risk ,  Routine Culturing Ratio ,  Routine Chest Xray Ratio ,Number of Beds, Medical School Affiliation ,  Region ,Average Daily Census ,  Number of Nurses ,  Available Facilities And Services.  
+  
+The Summary of the table is as follows:
+```{r echo= FALSE}
+summary(df)
+```
+***
+**2. Create a function that for a given column (vector) X does the following:**  
+**a. It computes first and third quartiles Q1 and Q3 with quantiles()**  
+**b. It returns indices of outlying observations, i.e. observation with X-values greater than Q3+1.5(Q3-Q1) or less than Q1-1.5(Q3-Q1).**
+
+```{r message=FALSE, warning=FALSE}
+#defining outliers function
+  ## outlier function takes dataframe column name as input and returns indices of outliers.
+
+outliers_fun <- function(X){
+    quant <- quantile(X)
+    lessout<- quant[2]-1.5*(quant[4]-quant[2])
+    greatout  <- quant[3]+1.5*(quant[4]-quant[2])
+    outlier_ind <- row.names(df[X<lessout|X>greatout,])
+    return(outlier_ind)
+}
+
+```
+***
+**3. Use ggplot2 and the function from step 2 to create a density plot of Infection risk in which outliers are plotted as a diamond symbol ( ◊ ) . Make some analysis of this graph.**
+
+```{r message=FALSE, warning=FALSE}
+#Density Plot
+  ## plotting for Infection Risk
+
+vals <- as.numeric(outliers_fun(df$Infection_Risk))
+outliers <- df$Infection_Risk[vals]
+outliersdf <- as.data.frame(outliers)
+#outliersdf$outliers <- as.factor(as.character(outliersdf$outliers))
+
+pl <- ggplot(df, aes(x= Infection_Risk)) + geom_density(fill ="blue", alpha =0.5)+ylab("Density")
+pl <- pl + geom_point(data =outliersdf, mapping=aes(x= outliers, y = 0), colour = "Red", shape =5)
+```
+  
+The plot looks like this:  
+  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+pl+ ggtitle("DENSITY PLOT FOR INFECTION RISK AT HOSPITALS")
+```
+  
+##### Analysis  
+_The highest point in our density plot of Infection risk falls around 4.5, indicating that this is where the_ _majority of the US hospitals fall. This means that approximately 40% of hospitals have an infection risk rate_ _of_4.5.The hospitals that have extremely low infection risk below 2 and extremely high infection risk of 8 are_ _considered outliers. Their results are significantly different from the majority of the hospitals. It could be_ _as a result of any number of factors such as age, number of nurses, available resources and so on._
+_But an interesting pattern to be observed is the predifined outliers function does not explain the density dip at the graph. Absence or lower density of values can also be considered a case of outliers which is not identified by the outlier function which uses quartiles to define outliers._
+  
+***
+  
+**4. Produce graphs of the same kind as in step 3 but for all other quantitative variables in the data (aes_string() can be useful here). Put these graphs into one (hint: arrangeGrob() in gridExtra package can be used) and make some analysis.**
+
+```{r message=FALSE, warning=FALSE}
+  ##Plotting for rest of the data
+columns <- as.integer(c(2:ncol(df)))
+columns <- columns[-which(colnames(df[columns]) %in% c("Infection_Risk","Medical_School_Affiliation", "Region"))]
+loopplotlist <- list()
+j=1
+
+for (i in columns) {
+  loopvals <- as.numeric(outliers_fun((df[,i])))
+  loopoutliers <- df[loopvals,i]
+  loopoutliersdf <- as.data.frame(loopoutliers)
+ # loopoutliersdf$loopoutliers <- as.factor(as.character(loopoutliersdf$loopoutliers))
+  
+  loopplot <- ggplot(df, aes_string(x= names(df[i]))) + geom_density(fill ="blue", alpha =0.5)+ ylab("Density")
+  loopplotlist[[j]] <- loopplot + geom_point(data =loopoutliersdf, mapping=aes(x= loopoutliers, y = 0), colour = "Red", shape =5)
+  j=j+1
+}
+graphs <- arrangeGrob(grobs = loopplotlist[], ncol = 2,nrow = 4)
+p <- as_ggplot(graphs)
+```
+
+The generated grid plot looks like ths:
+  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p+ ggtitle("DENSITY PLOTS ON VARIOUS FACTORS AT HOSPITALS")
+```
+  
+##### Analysis  
+_A similar shape/pattern can be identified in the following factors: Length of Stay, Routine Culturing Ratio, Number of beds, Average Daily Census, and Number of nurses. These graphs are skewed towards the left. It can be deduced in these graphs that, the lower the value of these factors, the higher the infection risk in those hospitals. However, for other factors such as Age and Available Facilities & Services, the infection risk falls in the middle._
+
+***
+
+**5. Create a ggplot2 scatter plot showing the dependence of Infection risk on the Number of Nurses where the points are colored by Number of Beds. Is there any interesting information in this plot that was not visible in the plots in step 4? What do you think is a possible danger of having such a color scale?**
+
+```{r message=FALSE, warning=FALSE}
+# Dependence plot between Infection Risk, Number of Nurses and number of Beds
+dependence<-ggplot(df,aes(x=Infection_Risk, y=Number_of_Nurses, color=Number_of_Beds)) + 
+  geom_point()
+```
+  
+The resulting graph is as follows:  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+dependence+ ggtitle("DEPENDENCY OF INFECTION RISK ON THE NUMBER OF NURSES\n
+                    Scaled along the Number of Beds")+
+  theme(plot.title = element_text(size=8))
+```
+  
+
+##### Analysis  
+_There are some outliers in the scatter plot that shows hospitals with a large number of beds and nurses (approximately over 600 each), yet they still have a relatively high infection risk above 4.5. On the lower end of the plot, a hospital with fewer beds has a lower infection risk. Having the color go lighter as the number of beds increases makes it easy to misinterpret the data, as it is easy to assume that the opposite is the case. _
+  
+***
+**6. Convert graph from step 3 to Plotly with ggplotly function. What important new functionality have you obtained compared to the graph from step 3? Make some additional analysis of the new graph.**
+
+```{r message=FALSE, warning=FALSE}
+## converted to plotly
+plplotly <- ggplotly(pl)
+
+l1 <- ggplotly(loopplotlist[[1]])
+l2 <- ggplotly(loopplotlist[[2]])
+l3 <- ggplotly(loopplotlist[[3]])
+l4 <- ggplotly(loopplotlist[[4]])
+l5 <- ggplotly(loopplotlist[[5]])
+l6 <- ggplotly(loopplotlist[[6]])
+l7 <- ggplotly(loopplotlist[[7]])
+l8 <- ggplotly(loopplotlist[[8]])
+
+loopplotlistplotly <- subplot(l1, l2, l3, l4, l5, l6, l7, l8, nrows = 4, margin = 0.05)%>%
+  layout(title = "DENSITY PLOTS ON VARIOUS FACTORS AT HOSPITALS")
+
+dependenceplotly<- dependence + ggtitle("DEPENDENCY OF INFECTION RISK ON THE NUMBER OF NURSES\n
+                                       SCALED ALONG THE NUMBER OF BEDS")
+dependenceplotly <- ggplotly(dependenceplotly)
+```
+
+The following are the graphs obtained:  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+loopplotlistplotly
+dependenceplotly
+```
+  
+
+##### Analysis  
+_After converting to Plotly, the scatter plot becomes more interactive. More details are shown as you hover over each dot. With this new feature, we can further deduce that the outliers mentioned previously have over 600 nurses, and 800 beds. It is also shown that majority of hospitals have the number of beds and nurses below 200._ 
+
+  
+***
+
+**7. Use data plot-pipeline and the pipeline operator to make a histogram of Infection risk in which outliers are plotted as a diamond symbol ( ◊ ) . Make this plot in the Plotly directly (i.e. without using ggplot2 functionality). Hint: select(), filter() and is.element() functions might be useful here.**
+
+```{r message=FALSE, warning=FALSE}
+#pipeline
+
+histodf <- filter(df,is.element(df$Infection_Risk, outliers)) %>% 
+  select('Infection_Risk')
+
+histplot <- df %>% plot_ly(x=~Infection_Risk, type = "histogram") %>%
+  add_markers(x = ~jitter(as.numeric(histodf$Infection_Risk)),
+              y = 0,
+              marker = list(size = 7, symbol= 'diamond-dot'),
+              showlegend = FALSE) %>% layout(title = 'HISTOGRAM ON INFETION RISK OF HOSPITALS', yaxis = list(title = 'Frequency'))
+```
+  
+The histogram obtained is as follows:  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+histplot
+```
+  
+##### Analysis  
+_The histogram makes sense on the dip visible around value 7 in the Density plot obtained above. The graph shows that no data has been received on an Infection Risk that falls between 6.9 to 7.5. it also shows that there is an increased visibility of Infection Risk between 2.5 and 2.9 compared to its neighbouring values._
+  
+***
+  
+  
+**8. Write a Shiny app that produces the same kind of plot as in step 4 but in addition include:**
+**a. Checkboxes indicating for which variables density plots should be produced** 
+**b. A slider changing the bandwidth parameter in the density estimation (‘bw’ parameter)**
+
+```{r message=FALSE, warning=FALSE}
+# Define UI 
+ui <- fluidPage(
+    checkboxGroupInput("variable", "Variables to show:",
+                       c("Length_of_Stay", "Age",
+                         "Routine_Culturing_Ratio", "Routine_Chest_Xray_Ratio" ,
+                         "Number_of_Beds", "Average_Daily_Census" , "Number_of_Nurses" ,
+                         "Available_Facilities_And_Services"), 
+                       selected = "Average_Daily_Census"),
+    sliderInput(inputId="ws", label="Choose bandwidth size", value=0.1, min=0.1, max=1),
+    tableOutput("data"),
+    plotOutput("outplot")
+)
+
+#Define server
+server <- function(input, output, session) {
+    output$data <- renderTable({
+        df[1:10,input$variable]
+    }, rownames = TRUE,)
+    
+    output$outplot <- renderPlot({
+        dftemp <-  as.data.frame(df[,input$variable])
+        colnames(dftemp) <- "data"
+        outlierdf <- as.data.frame(dftemp[outliers_fun(dftemp[,1]),])
+        colnames(outlierdf) <- "outliers"
+        ggplot(dftemp, aes(x= data)) +
+            stat_density(alpha=0.8, bw=input$ws, position="identity")+
+            ylab("Density")+xlab(input$variable)+
+            geom_point(data =outlierdf, mapping=aes(x= outliers, y = 0), colour = "Red", shape =5)
+    })
+}
+
+
+# Run the application 
+#shinyApp(ui = ui, server = server)
+```
+  
+##### Analysis  
+_The higher the bandwidth, the smoother the graph becomes. Graphs that contain more data, for example, Number of beds or Number of Nurses, a higher bandwidth ranging from 2.5 to 3.5 would be recommended, as it is practically unreadable when the bandwidth is set to anything less than 2. For graphs with less data, for example Length of Stay or Age, a lower bandwidth ranging from 0.25 to 0.35 is preferred, as anything higher would cause some data to be lost._
+  
+***
+   
+## STATEMENT OF CONTRIBUTION
+For the first assignment since we both are new to the InkScape Software, we both sat simultaneously and learned on various tools of InkScape through trial and Error method. Because of the great GUI the software seemed easy to use and we both aided each other on ways to accomplish the given task.
+  
+As for the second assignment coding was done by Greeshma Jeev and the Analysis part was done by Olayemi. We both went through the outputs and the analysis to make our own suggestions to the results inorder to make this report a grand success.
+
+-----------------------------------------------------------------------------------------------------------------
