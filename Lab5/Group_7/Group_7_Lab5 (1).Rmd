@@ -1,0 +1,726 @@
+---
+title: "Group_7"
+author: "Greeshma Jeev Koothuparambil and Olayemi Morrison"
+date: "03/10/2023"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This report is submitted by Greeshma Jeev Koothuparambil and Olayemi Morrison as a part of Laboratory 5 of Visualization (732A98) Course for the 2023 Autumn Semester.
+
+>Assignment 1
+  
+Following are the libraries used for the successful completion of this assignment:  
+ 
+```{r message=FALSE, warning=FALSE}
+library(ggraph)
+library(igraph)
+library(visNetwork)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(seriation)
+library(plotly)
+```
+***
+#### Reading the the files in to the dataframe  
+
+```{r message=FALSE, warning=FALSE}
+
+#Read the files
+trainlinks <- read.table("trainData.dat", header=F, sep = "\t")
+trainnodes <- read.table("trainMeta.dat", header=F, sep = "\t")
+
+# Spliting data into separate columns
+trlinks <- as.data.frame(str_split_fixed(trainlinks$V1, ' ', 4))
+trlinks <- trlinks[, -1]
+colnames(trlinks) <- c("from", "to", "width")
+trlinks$width <- as.numeric(trlinks$width)
+
+trainnodes$Number <- sapply(strsplit(trainnodes$V1, " "), tail, n = 1)
+trainnodes$Number <- as.numeric(trainnodes$Number)
+trainnodes$V1 <- sub("\\s[0-9]+$", "", trainnodes$V1)
+
+trnodes <- trainnodes
+colnames(trnodes) <- c("individual", "bombingGroup")
+trnodes$id <- seq_len(nrow(trnodes))
+trnodes <- trnodes[, c(3,1,2)]
+
+```
+
+The Summary of the tables are as follows:  
+```{r echo= FALSE}
+summary(trnodes)
+```
+trnodes has 486 observations and 3 variables namely: id, individual and bombingGroup.  
+
+```{r echo= FALSE}
+
+summary(trlinks)
+```
+trlinks has 70 observations and 3 variables namely: from, to and width.  
+
+***
+
+
+**1.Use visNetwork package to plot the graph in which**  
+**a. you use strength of links variable**  
+**b. nodes are colored by Bombing Group.**  
+**c. size of nodes is proportional to the number of connections ( function strength() from IGRAPH might be useful here)**  
+**d. you use a layout that optimizes repulsion forces (visPhysics(solver=”repulsion”)).**  
+**e. all nodes that are connected to a currently selected node by a path of length one are highlighted**  
+**Analyse the obtained network, in particular describe which clusters you see in the network.**  
+
+```{r message=FALSE, warning=FALSE}
+
+## Collapsing multiple trlinks into one
+
+trlinks <- aggregate(trlinks[,3], trlinks[,-3], sum)
+trlinks <- trlinks[order(trlinks$from, trlinks$to),]
+colnames(trlinks)[3] <- "weight"
+rownames(trlinks) <- NULL
+
+trnodes$label=trnodes$individual
+net <- graph_from_data_frame(d=trlinks, vertices=trnodes, directed=T)
+trnodes$group=trnodes$bombingGroup
+trlinks$value=trlinks$weight
+trnodesize <- strength(net)
+##trnodes$trnodesize <- trnodesize
+trnodes <- trnodes %>%
+  mutate(id=id,
+         size=trnodesize)
+p <- visNetwork(trnodes, trlinks)%>%visLegend()%>%
+ visPhysics(solver = "repulsion")%>%visOptions(highlightNearest = TRUE)
+
+```
+  
+The plot looks like this:  
+  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p
+```
+  
+##### Analysis  
+_The network is heavily connected. Rather than clustering the information based on participation in the bombing, it feels more efficient to cluster people based on their connection. The graph shows one huge cluster and 3 small clusters. In the largest cluster we can find many strong connections or ties between people who can be called as strong hubs in the network. The strongest in the network seems to be Jamal Zougam who is connected to many big shots who have large network connections followed by Imad Eddin Barakat and Mohamed Chaoui. Mohamed Chaoui, Jamal Zougam, Said Berrak, Abdeluahid Berrak,  Amer Azizi, Galeb Kalaje, Imad Eddin Barakat, Shakur, Mohamed Belfatmi, Ramzi Binalshibh, Abu Musad Alsakaoui, Mohamed Atta and Said Bahaji seem to have a heavy connection with each other. Of these connections, Imad Eddin Barakat,  Amer Azizi and  Jamal Zougam share strong bonds. The person with the least connections but has a bond with Jamal Zougam is Mohamed Bekkali. In one of the small clusters, a strong bond is shared between Taysir Alouny and Mohamed Bahaiah. Beyond the clusters, relatively strong ties can be found between Abdelaziz Benyaich and  Omar Dhegayes. It can be observed that two of the small clusters and the largest cluster have a highly connected person which holds them together named Semaan Gaby Eid. The data holds  information about 6 unrelated people who do not have any sort of connection with the terrorist network._
+
+_Most of the people who have strong ties in the network have refrained from participating in the bombing incident. Mohamed Chaoui, Jamal Zougam and Said Berrak are the big shots who participated in, probably led, the bombing._  
+
+  
+  
+***
+  
+**2. Add a functionality to the plot in step 1 that highlights all nodes that are connected to the selected node by a path of length one or two. Check some amount of the largest nodes and comment which individual has the best opportunity to spread the information in the network. Read some information about this person in Google and present your findings.**  
+
+```{r message=FALSE, warning=FALSE}
+#Plotting the second graph
+
+p2 <- visNetwork(trnodes, trlinks)%>%visLegend()%>%
+ visPhysics(solver = "repulsion")%>%visOptions(highlightNearest = list(enabled = TRUE, degree  = 2))
+
+```
+  
+The resultant graph is:  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p2
+```
+
+  
+##### Analysis  
+_On closer observation, Jamal Ahmidan shares ties with all the clusters. He has connections with most of the people on a second degree basis. There can be no better candidate than him to dissipate messages on bombing than him which is evident from the fact that he has participated in the bombing. Probably his main role was about exchanging updates._  
+
+
+***
+  
+**3. Compute clusters by optimizing edge betweenness and visualize the resulting network. Comment whether the clusters you identified manually in step 1 were also discovered by this clustering method.**  
+
+```{r message=FALSE, warning=FALSE}
+#Plotting the third graph
+
+trnodes1<-trnodes
+net <- graph_from_data_frame(d=trlinks, vertices=trnodes, directed=F)
+ceb <- cluster_edge_betweenness(net) 
+trnodes1$group=ceb$membership
+
+p3 <- visNetwork(trnodes1,trlinks)%>%visIgraphLayout()
+```
+  
+The result is as below:  
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p3
+```
+
+  
+  
+##### Analysis  
+_According to the graph, there are 5 clusters visible. The biggest cluster identified in the first graph has been divided into two in this clustering where the division is mostly based on the number of first degree connections._  
+
+
+
+  
+***
+  
+**4. Use adjacency matrix representation to perform a permutation by Hierarchical Clustering (HC) seriation method and visualize the graph as a heatmap. Find the most pronounced cluster and comment whether this cluster was discovered in steps 1 or 3.**  
+
+```{r message=FALSE, warning=FALSE}
+#Plotting the fourth graph
+netm <- get.adjacency(net, attr="weight", sparse=F)
+colnames(netm) <- V(net)$media
+rownames(netm) <- V(net)$media
+
+rowdist<-dist(netm)
+
+order1<-seriate(rowdist, "HC")
+ord1<-get_order(order1)
+o1 <- trnodes$individual[ord1]
+rownames(netm) <- o1
+colnames(netm) <- o1
+reordmatr<-netm[ord1,ord1]
+
+
+pplt <- plot_ly(z=~reordmatr, x=~colnames(reordmatr), 
+        y=~rownames(reordmatr), type="heatmap")
+
+```
+  
+  
+  
+The resulting graph is as follows:  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+pplt
+```
+
+  
+  
+##### Analysis  
+_The cluster shown by the heatmap was not able to be seen in the questions 1 and 3. The cluster members are not big shots. Mohamed Bekkali, Rachid Oulad Akcha, Antonio Toro, Said Ahmidan, Rafa Zuher, Abderrahim Zbakh, Khalid Ouled Akcha, Omar Dhegayes, Mustafa Ahmidan, Ivan Granados and Semaan Gaby Eid are the members noted in the cluster. All of them refrained from participating in the bombing._  
+
+
+***
+
+>Assignment 2
+
+Following are the libraries used for the successful completion of this assignment:  
+
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+library(tidyr)
+library(plotly)
+library(tourr)
+```
+***
+
+#### Reading the the file OilCoal.csv in to the dataframe  
+
+```{r message=FALSE, warning=FALSE}
+#Reading the file and spliting the data into separate columns for easy readability.
+df <- read.csv("Oilcoal.csv", header = TRUE, sep = ";")
+df$Marker.size <- gsub(",", ".", df$Marker.size)
+df <- df[, -6]
+
+df <- df %>% mutate_all(~gsub(",", "", .))
+df$Coal <- as.numeric(df$Coal)
+df$Oil <- as.numeric(df$Oil)
+df$Marker.size <- as.numeric(df$Marker.size)
+
+```
+The data (df) has 360 observations and 5 variables namely:
+
+
+The summary of the table is as follows:  
+```{r echo= FALSE}
+summary(df)
+```
+***
+
+
+
+**1. Visualize data in Plotly as an animated bubble chart of Coal versus Oil in which the bubble size corresponds to the country size. List several noteworthy features of the investigated animation.**  
+
+```{r message=FALSE, warning=FALSE}
+#Plotting the animated bubble chart
+p1 <- df %>% plot_ly(x=~Oil, y=~Coal, frame =~Year, color = ~Country, size = ~Marker.size, 
+                     hoverinfo = "text", type = "scatter", mode = "markers")%>% 
+  layout(xaxis = list(type = "log"), yaxis = list(type = "log"), title = "Coal Vs Oil Consumption")
+
+```
+  
+The plot looks like this:  
+  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p1
+
+```
+  
+##### Analysis  
+_In the case of Brazil, the economy is based mostly on oil. The consumption of coal is minimal and mostly kept at a constant level with a slight depreciation around 2003._  
+
+_The Chinese Economy maintained a below average consumption of both oil and coal between 1965 and 1980. In the year 1981 there was a huge drop in the consumption of coal, though the next year it was back to normal. In the year 2000 the Chinese Economy saw a big boom in the consumption of coal making it the 3rd largest consumer. The oil consumption grew steadily till 2004, and in the year 2004 saw a decline of consumption only to be back with a boom in the year 2005. This again fell in the consecutive years._   
+
+_France follows the most versatile trend in the consumption chart despite falling under the lower consumption category. Until 1979 it maintained its coal consumption and it dropped in 1979. In 1983, it again saw a reduction of consumption of oil making it the least consumed country in the graph.  From there till 1994, its consumption rate fluctuated heavily between oil and coal and was still at the bottom in the consumers list. The year 1988, saw the biggest drop in consumption in the history of France. Since 2003, they have been reducing the consumption of coal steadily._   
+
+_German consumption was moderate. But the year 2005 showed a boom in the coal industry from 100k on an average to 10B._  
+
+_India is a coal based economy and it has always maintained a high consumption in the case of coal even with a steady increase in oil consumption. But in  2007, India showed a boost in the oil consumption which flew from less than a million to almost 8B._  
+
+_Until 1978, Japan followed a steady consumption. From then it began to fluctuate where in 1982 the consumption of coal showed the lowest in data and boosted only in 1985. In 1990, Japan Economy showed a boost in oil consumption to nearly 8B. In 2006, its coal consumption shot up to 1B which it compensated by reducing oil consumption in the next year._  
+
+_In the US Economy, the coal consumption is heavier. But it maintained a decent consumption rate in the case of oil. In 1973 there was a high demand for coal in the US. . It was going at a steady pace until 2004 where it showed a boost in oil consumption which went up to 10B and fluctuated for 2 years. After that the data followed the 2004 pattern._  
+
+_The UK Economy consumption was at a below average consumption rate for both sources. It fluctuated between oil and coal in a steady mode until 2004. In 2004 the coal consumption of the UK shot up to more than 1B. The next year it also boosted its oil consumption to 10B and maintained the same consumption since then._  
+
+  
+***
+  
+**2. Find two countries that had similar motion patterns and create a motion chart including these countries only. Try to find historical facts that could explain some of the sudden changes in the animation behavior.**  
+
+```{r message=FALSE, warning=FALSE}
+# Picking two countries with similar pattern
+df2 <- df %>% filter(Country %in% c("Germany", "United Kingdom"))
+
+#Plotting the motion graph
+p2 <- plot_ly(df2, x=~Oil, y=~Coal, frame =~Year, color = ~Country, size = ~Marker.size)%>%
+  layout(xaxis = list(type = "log"), yaxis = list(type = "log"), title = "Motion Graph of Germany and UK")
+
+```
+  
+The motion plot looks like this:  
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p2
+
+```
+  
+  
+##### Analysis  
+_Both the countries faced an increased Energy demand and consumption during the early 2000s. The demand was met through coal import which was cheaper than oil and gas. Germany also adopted the policy of phasing out the nuclear energy during this time.We cant outlook the international market trend as well._    
+
+
+  
+***
+  
+**3. Compute a new column that shows the proportion of fuel consumption related to oil: OIlp = Oil/OIl + Coal * 100. One could think of visualizing the proportions Oilp by means of animated bar charts; however smooth transitions between bars are not yet implemented in Plotly. Thus, use the following workaround:**  
+**a. Create a new data frame that for each year and country contains two rows: one that shows Oilp and another row containing 0 in Oilp column**  
+**b. Make an animated line plot of Oilp versus Country where you group lines by Country and make them thicker**  
+**Perform an analysis of this animation. What are the advantages of visualizing data in this way compared to the animated bubble chart? What are the disadvantages?**  
+
+```{r message=FALSE, warning=FALSE}
+
+#Computing the value of Oil_p
+df3 <- df %>% mutate(Oil_p = (Oil/(Oil+Coal)) * 100)
+
+#Creating a new dataframe with two rows for each country and year
+df4 <- df3 %>% group_by(Year, Country) %>%
+  summarise(Oil_p = Oil_p) %>% 
+  bind_rows(df %>% distinct(Year, Country) %>% mutate(Oil_p = 0))
+
+df4$Country <- as.factor(as.character(df4$Country))
+
+#Plotting the graph
+p3 <- plot_ly(df4, x=~Country, y=~Oil_p, color = ~Country, frame =~Year, mode = "lines", line = list(width = 20))%>%
+  add_lines()%>%
+  layout(yaxis = list(type = "log"), title = "Line Plot of Oilp Vs Country")
+
+
+```
+  
+The resulting graph is as below:  
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p3
+
+```
+
+
+    
+  
+##### Analysis  
+_In the beginning all the countries were oil based economies except India and the US. Especially in India which is a coal economy. All the countries maintained a high consumption in oil while fluctuating the consumption for coal in a tremendous way. In 1990, India picked up a stand in their oil consumption majorly because of globalisation. In 2004, the oil- coal consumption balance fell off for the UK because of the boost in Coal consumption. Similar situation is also seen for the US._  
+**Advantages:**  
+
+_The trend is more legible compared to the bubble chart._  
+_The line charts for each country is stable and easy to be perceived by the human eyes_  
+
+**Disadvantages:**  
+_It does not support multi dimensional plotting in the graph compared to bubble chart which can show different sizes of the economy._  
+_The line chart does not give insight about the clusters in the data like is shown by the bubble chart._  
+
+
+
+***
+**4. Repeat the previous step but use “elastic” transition (easing). Which advantages and disadvantages can you see with this animation? Use information in https://easings.net/ to support your arguments.**
+
+```{r message=FALSE, warning=FALSE}
+
+#Plotting the graph with easing set to elastic.
+p4 <- plot_ly(df4, x=~Country, y=~Oil_p, color = ~Country, frame =~Year, mode = "lines", line = list(width = 20))%>%
+  add_lines()%>%animation_opts(
+  100, easing = "elastic", redraw = F
+)%>%
+  layout(yaxis = list(type = "log"), title = "Line Plot of Oilp Vs Country")
+
+```
+
+
+The resulting graph is as follows: 
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+
+p4
+
+```
+
+  
+  
+##### Analysis  
+**Advantages:**  
+_The data stays for an amount of time for each year making it easier for analysis than a smooth transition._   
+_It helps in better understanding for every country in a year because of the pause._  
+_There is visual engagement throughout the graph rather than concentrating on the trend of only one country._  
+**Disadvantages:**  
+_Constant bouncing of the chart is visually overwhelming._  
+_Inconsistent timing makes it difficult to analyse the graph._  
+
+
+
+***
+  
+**5. Use Plotly to create a guided 2D-tour visualizing Coal consumption in which the index function is given by Central Mass index and in which observations are years and variables are different countries. Find a projection with the most compact and well-separated clusters. Do clusters correspond to different Year ranges? Which variable has the largest contribution to this projection? How can this be interpreted? (Hint: make a time series plot for the Coal consumption of this country) **  
+
+```{r message=FALSE, warning=FALSE}
+
+#Manipulating the dataframe to set Countries as variables, and Year as observations
+df_pivot <- df[,c(1:3)] %>% pivot_wider(names_from = Country, values_from = Coal)
+df_pivot <- as.data.frame(df_pivot)
+rownames(df_pivot)<- df_pivot$Year
+
+mat <- rescale(df_pivot[,2:9])
+set.seed(12345)
+tour <- new_tour(mat, guided_tour(cmass), NULL)
+
+steps <- c(0, rep(1/15, 200))
+Projs<-lapply(steps, function(step_size){  
+  step <- tour(step_size)
+  if(is.null(step)) {
+    .GlobalEnv$tour<- new_tour(mat, guided_tour(cmass), NULL)
+    step <- tour(step_size)
+  }
+  step
+}
+)
+
+# projection of each observation
+tour_dat <- function(i) {
+  step <- Projs[[i]]
+  proj <- center(mat %*% step$proj)
+  data.frame(x = proj[,1], y = proj[,2], state = rownames(mat))
+  }
+
+# projection of each variable's axis
+proj_dat <- function(i) {
+  step <- Projs[[i]]
+  data.frame(
+    x = step$proj[,1], y = step$proj[,2], variable = colnames(mat)
+     )
+}
+
+stepz <- cumsum(steps)
+
+# tidy version of tour data
+tour_dats <- lapply(1:length(steps), tour_dat)
+tour_datz <- Map(function(x, y) cbind(x, step = y), tour_dats, stepz)
+tour_dat <- dplyr::bind_rows(tour_datz)
+
+# tidy version of tour projection data
+proj_dats <- lapply(1:length(steps), proj_dat)
+proj_datz <- Map(function(x, y) cbind(x, step = y), proj_dats, stepz)
+proj_dat <- dplyr::bind_rows(proj_datz)
+
+ax <- list(
+  title = "", showticklabels = FALSE,
+  zeroline = FALSE, showgrid = FALSE,
+  range = c(-1.1, 1.1)
+)
+
+# for nicely formatted slider labels
+options(digits = 3)
+tour_dat <- highlight_key(tour_dat, ~state, group = "A")
+tour <- proj_dat %>%
+  plot_ly(x = ~x, y = ~y, frame = ~step, color = I("black")) %>%
+  add_segments(xend = 0, yend = 0, color = I("gray80")) %>%
+  add_text(text = ~variable) %>%
+  add_markers(data = tour_dat, text = ~state, ids = ~state, hoverinfo = "text") %>%
+  layout(xaxis = ax, yaxis = ax, title = "Guided 2D-tour of Coal Consumption")
+
+```
+  
+  
+  
+The resulting graph is as follows:  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+tour
+```
+
+
+  
+  
+##### Analysis  
+_There are many clusters that can be found from the graph. All the clusters mostly revolve around a certain time interval although there are exceptional cases._   
+_The largest contributor to the clustering is the US because the axis of US stays longer than other variables. The time series plot of the US is as follows:_  
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+plot_ly(df_pivot, x=~Year, y=~US)%>%add_lines()%>%layout(title = "Time Series plot Coal Consumption in the US")
+```
+
+_From the graph, we can see that major consumption trends followed by US is reflected in many other countries in the analysis that we have done in the previous questions._  
+
+
+
+***
+
+   
+## STATEMENT OF CONTRIBUTION
+For the first assignment coding was done by Olayemi and the Analysis part was done by Greeshma Jeev. We both went through the outputs and the analysis to make our own suggestions to the results inorder to make this report a grand success.
+  
+As for the second assignment since we both are new to the Animation Plots in R, we both sat together and learned on various aspects of animation plots and its coding in R by going through Lecture Slides, Textbooks and Web browsing.  After getting a clearer understanding of the assignment the coding for the assignment was done by Olayemi and Analysis was done by Greeshma Jeev
+
+The RMD file was designed together and coded by Greeshma Jeev. Content writing was done by both Olayemi and Greeshma Jeev.
+
+  
+***
+  
+  
+> APPENDIX
+
+#### Code for Assignment 1 (TrainData & TRainMeta)
+  
+```{r message=FALSE, warning=FALSE, eval=FALSE}
+# Set the working directory
+setwd("R/")
+
+#Read the libraries
+
+library(ggraph)
+library(igraph)
+library(visNetwork)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(seriation)
+library(plotly)
+
+#Read the files
+trainlinks <- read.table("trainData.dat", header=F, sep = "\t")
+trainnodes <- read.table("trainMeta.dat", header=F, sep = "\t")
+
+# Spliting data into separate columns
+trlinks <- as.data.frame(str_split_fixed(trainlinks$V1, ' ', 4))
+trlinks <- trlinks[, -1]
+colnames(trlinks) <- c("from", "to", "width")
+trlinks$width <- as.numeric(trlinks$width)
+
+trainnodes$Number <- sapply(strsplit(trainnodes$V1, " "), tail, n = 1)
+trainnodes$Number <- as.numeric(trainnodes$Number)
+trainnodes$V1 <- sub("\\s[0-9]+$", "", trainnodes$V1)
+
+trnodes <- trainnodes
+colnames(trnodes) <- c("individual", "bombingGroup")
+trnodes$id <- seq_len(nrow(trnodes))
+trnodes <- trnodes[, c(3,1,2)]
+
+## Collapsing multiple trlinks into one
+trlinks <- aggregate(trlinks[,3], trlinks[,-3], sum)
+trlinks <- trlinks[order(trlinks$from, trlinks$to),]
+colnames(trlinks)[3] <- "weight"
+rownames(trlinks) <- NULL
+
+trnodes$label=trnodes$individual
+net <- graph_from_data_frame(d=trlinks, vertices=trnodes, directed=T)
+visIgraph(net)
+trnodes$group=trnodes$bombingGroup
+trlinks$value=trlinks$weight
+trnodes <- trnodes %>%
+  mutate(id=id,
+         size=trnodesize)
+
+visNetwork(trnodes, trlinks)%>%visLegend()%>%visOptions(highlightNearest = TRUE)
+
+#Question 1.2 
+visNetwork(trnodes, trlinks)%>%visLegend()%>%visOptions(highlightNearest = list(enabled = TRUE, degree  = 2))
+
+# Question 1.3 - Community identification
+trnodes1<-trnodes
+net <- graph_from_data_frame(d=trlinks, vertices=trnodes, directed=F)
+ceb <- cluster_edge_betweenness(net) 
+trnodes1$group=ceb$membership
+visNetwork(trnodes1,trlinks)%>%visIgraphLayout()
+
+
+#Question 1.4 - adjacency representation
+netm <- get.adjacency(net, attr="weight", sparse=F)
+colnames(netm) <- V(net)$media
+rownames(netm) <- V(net)$media
+
+rowdist<-dist(netm)
+
+order1<-seriate(rowdist, "HC")
+ord1<-get_order(order1)
+o1 <- trnodes$individual[ord1]
+rownames(netm) <- o1
+colnames(netm) <- o1
+reordmatr<-netm[ord1,ord1]
+
+
+plot_ly(z=~reordmatr, x=~colnames(reordmatr), 
+        y=~rownames(reordmatr), type="heatmap")
+
+```
+  
+  
+***
+
+  
+#### Code for Assignment 2 (OilCoal.csv)
+  
+  
+```{r message=FALSE, warning=FALSE, eval=FALSE}
+# loading the libraries
+
+library(plotly)
+library(ggplot2)
+library(tidyr)
+library(MASS)
+library(dplyr)
+library(akima)
+
+#Question 2.1
+#Reading the file and renaming the columns for easy readability.
+df <- read.csv("Oilcoal.csv", header = TRUE, sep = ";")
+df$Marker.size <- gsub(",", ".", df$Marker.size)
+df <- df[, -6]
+
+df <- df %>% mutate_all(~gsub(",", "", .))
+df$Coal <- as.numeric(df$Coal)
+df$Oil <- as.numeric(df$Oil)
+df$Marker.size <- as.numeric(df$Marker.size)
+
+#Plotting the graph
+p1 <- df %>% plot_ly(x=~Oil, y=~Coal, frame =~Year, color = ~Country, size = ~Marker.size, 
+                     hoverinfo = "text", type = "scatter", mode = "markers")%>% 
+  layout(xaxis = list(type = "log"), yaxis = list(type = "log"), title = "Coal Vs Oil Consumption")
+
+p1
+
+#Question 2.2: Pick 2 countries with similar pattern
+df2 <- df %>% filter(Country %in% c("Germany", "United Kingdom"))
+
+#Plotting the motion graph
+p2 <- plot_ly(df2, x=~Oil, y=~Coal, frame =~Year, color = ~Country)%>%
+  layout(xaxis = list(type = "log"), yaxis = list(type = "log"), title = "Motion Graph of Germany and UK")
+p2
+
+#Question 2.3
+#Computing the value of Oil_p
+df3 <- df %>% mutate(Oil_p = (Oil/(Oil+Coal)) * 100)
+
+#Creating a new dataframe with two rows for each country and year
+df4 <- df3 %>% group_by(Year, Country) %>%
+  summarise(Oil_p = Oil_p) %>% 
+  bind_rows(df %>% distinct(Year, Country) %>% mutate(Oil_p = 0))
+
+df4$Country <- as.factor(as.character(df4$Country))
+
+#Plotting the graph
+p3 <- plot_ly(df4, x=~Country, y=~Oil_p, color = ~Country, frame =~Year, mode = "lines", line = list(width = 20))%>%
+  add_lines()%>%
+  layout(yaxis = list(type = "log"), title = "Line Plot of Oilp Vs Country")
+
+p3
+
+#Question 2.4
+#Plotting the graph with easing set to elastic.
+p4 <- plot_ly(df4, x=~Country, y=~Oil_p, color = ~Country, frame =~Year, mode = "lines", line = list(width = 20))%>%
+  add_lines()%>%animation_opts(
+  100, easing = "elastic", redraw = F
+)%>%
+  layout(yaxis = list(type = "log"), title = "Line Plot of Oilp Vs Country")
+
+p4
+
+#Question 2.5
+#Manipulating the dataframe to set Countries as variables, and Year as observations
+df_pivot <- df[,c(1:3)] %>% pivot_wider(names_from = Country, values_from = Coal)
+df_pivot <- as.data.frame(df_pivot)
+rownames(df_pivot)<- df_pivot$Year
+
+mat <- rescale(df_pivot[,2:9])
+set.seed(12345)
+tour <- new_tour(mat, guided_tour(cmass), NULL)
+
+steps <- c(0, rep(1/15, 200))
+Projs<-lapply(steps, function(step_size){  
+  step <- tour(step_size)
+  if(is.null(step)) {
+    .GlobalEnv$tour<- new_tour(mat, guided_tour(cmass), NULL)
+    step <- tour(step_size)
+  }
+  step
+}
+)
+
+# projection of each observation
+tour_dat <- function(i) {
+  step <- Projs[[i]]
+  proj <- center(mat %*% step$proj)
+  data.frame(x = proj[,1], y = proj[,2], state = rownames(mat))
+  }
+
+# projection of each variable's axis
+proj_dat <- function(i) {
+  step <- Projs[[i]]
+  data.frame(
+    x = step$proj[,1], y = step$proj[,2], variable = colnames(mat)
+     )
+}
+
+stepz <- cumsum(steps)
+
+# tidy version of tour data
+tour_dats <- lapply(1:length(steps), tour_dat)
+tour_datz <- Map(function(x, y) cbind(x, step = y), tour_dats, stepz)
+tour_dat <- dplyr::bind_rows(tour_datz)
+
+# tidy version of tour projection data
+proj_dats <- lapply(1:length(steps), proj_dat)
+proj_datz <- Map(function(x, y) cbind(x, step = y), proj_dats, stepz)
+proj_dat <- dplyr::bind_rows(proj_datz)
+
+ax <- list(
+  title = "", showticklabels = FALSE,
+  zeroline = FALSE, showgrid = FALSE,
+  range = c(-1.1, 1.1)
+)
+
+# for nicely formatted slider labels
+options(digits = 3)
+tour_dat <- highlight_key(tour_dat, ~state, group = "A")
+tour <- proj_dat %>%
+  plot_ly(x = ~x, y = ~y, frame = ~step, color = I("black")) %>%
+  add_segments(xend = 0, yend = 0, color = I("gray80")) %>%
+  add_text(text = ~variable) %>%
+  add_markers(data = tour_dat, text = ~state, ids = ~state, hoverinfo = "text") %>%
+  layout(xaxis = ax, yaxis = ax, title = "Guided 2D-tour of Coal Consumption")
+tour
+
+
+plot_ly(df_pivot, x=~Year, y=~US)%>%add_lines()%>%layout(title = "Time Series plot Coal Consumption in the US")
+```
+
+
+```
+
+***

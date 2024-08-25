@@ -1,0 +1,587 @@
+---
+title: "Laboratory 2 Report"
+author: "Greeshma Jeev Koothuparambil and Olayemi Morrison"
+date: "12/09/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This report is submitted by Greeshma Jeev Koothuparambil and Olayemi Morrison as a part of Laboratory 2 of Visualization (732A98) Course for the 2023 Autumn Semester.
+
+>Assignment 1
+  
+Following are the libraries used for the successful completion of this assignment:  
+ggplot2  
+gridExtra  
+dplyr  
+ggpubr  
+plotly  
+grid  
+
+
+Here is how we loaded our libraries:  
+
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+library(ggpubr)
+library(plotly)
+library(grid)
+```
+***
+#### Reading the dataframe Olive.csv into the file
+```{r message=FALSE, warning=FALSE}
+#reading the file.
+
+df <-  read.csv("olive.csv")
+```
+The loaded dataframe looks like this:
+```{r echo= FALSE}
+knitr::kable(
+  df[1:6, 1:6]
+)
+knitr::kable(
+  df[1:6, 7:11]
+)
+```
+It has 572 observations and 11 variables namely:  
+X, Region, Area, palmitic, palmitoleic, stearic, oleic, linoleic, linolenic, arachidic and eicosenoic.
+  
+The Summary of the table is as follows:
+```{r echo= FALSE}
+summary(df)
+```
+***
+
+**1. Create a scatterplot in Ggplot2 that shows dependence of Palmitic on Oleic in which observations are colored by Linoleic. Create also a similar scatter plot in which you divide Linoleic variable into fours classes (use cut_interval() ) and map the discretized variable to color instead. How easy/difficult is it to analyze each of these plots? What kind of perception problem is demonstrated by this experiment?**  
+
+```{r message=FALSE, warning=FALSE}
+#ploting the first graph
+p<-ggplot(df,aes(x=palmitic, y=oleic, color=linoleic)) + 
+  geom_point()+
+  ggtitle("Dependency of Palmitic over Oleic based on Linoleic")
+
+intervaldf <- data.frame(cut_interval(df$linoleic,n = 4))
+colnames(intervaldf) <- "linoleicinterval4"
+
+p1<-ggplot(df,aes(x=palmitic, y=oleic, color=intervaldf$linoleicinterval4)) + 
+  geom_point()+ 
+  ggtitle("Dependency of Palmitic over Oleic based on Linoleic Level")+
+  labs(color = "Linoleic Interval")
+```
+  
+The plot looks like this:  
+  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p
+p1
+```
+  
+##### Analysis  
+_In the first plot “p”, it is easy to assume that the darker shade means a higher value upon initial inspection, but the legend shows that as the color gets lighter, the value increases. Also, because this is plotted with continuous values, there are some shades that are too similar to distinguish. Overlapping points also causes loss of data. As a perception problem, we are unable to recognize, organize or interpret the data._  
+_The second plot “p1” is much easier to analyze because the Linoleic variable has been mapped to color instead. A clear boundary can be seen for each category._
+
+  
+***
+  
+**2. Create scatterplots of Palmitic vs Oleic in which you map the discretized Linoleic with fourclasses to:**  
+**a. Color**  
+**b. Size**  
+**c. Orientation angle (use geom_spoke() )**  
+**State in which plots it is more difficult to differentiate between the categories and connect your findings to perception metrics (i.e. how many bits can be decoded by a specific aesthetics)**  
+
+  
+```{r message=FALSE, warning=FALSE}
+#plotting the second graph
+t1 <- textGrob("Comparison of different graphs on \n Dependency of Palmitic over Oleic based on Linoleic Level")
+p1<-ggplot(df,aes(x=palmitic, y=oleic, color=intervaldf$linoleicinterval4)) + 
+  geom_point()+ labs(color = "Linoleic Interval")
+p2<-ggplot(df,aes(x=palmitic, y=oleic,  size=intervaldf$linoleicinterval4)) + 
+  geom_point()+ labs(size = "Linoleic Interval")
+p3<-ggplot(df,aes(x=palmitic, y=oleic)) +
+  geom_point()+ geom_spoke(aes(angle = as.integer(intervaldf$linoleicinterval4)), radius = 50)
+graphs <- arrangeGrob(grobs = list(t1,p1,p2,p3), ncol = 1,nrow = 4,heights = c(4,10,10,10))
+palmiticXoleicXlinoleic <- as_ggplot(graphs)
+```
+
+  
+The resulting graph looks interesting:  
+  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+palmiticXoleicXlinoleic
+```
+
+  
+##### Analysis  
+_The plots “p2” and "p3" in which the discrete variable plotted is based on size and spokes are really hard to differentiate between the categories. It is extremely difficult because the circles and spokes overlap and data is lost on this graph due to overplotting naking it difficult to distinguish the boundaries between observations. It is impossible to recognize, organize or interpret the data in this way._  
+_According to the perception metrics colors can be recogonised upto 10 hues and here we are using only 4 making it easier to distinguish them. log4 = 2 bits are easier for perception. In the case of size based scatter plot even though it says we can recognise upto 5 sizes it is hard in here because of the overplotting issue. here even 2 bits of channel capacity seems hard. Same is the case with spokes. Even though human perception has a 3 bit capacity in analysing line orientation overlapping of values makes it hard to understand the orientation of every spoke._  
+
+  
+  
+***
+  
+**3. Create a scatterplot of Oleic vs Eicosenoic in which color is defined by numeric values of Region. What is wrong with such a plot? Now create a similar kind of plot in which Region is a categorical variable. How quickly can you identify decision boundaries? Does preattentive or attentive mechanism make it possible?**
+  
+```{r message=FALSE, warning=FALSE}
+#plotting the third graph
+t2 <- textGrob("Comparison of different graphs on \n Dependency of Oleic over Eicosenoic based on Region")
+p4<-ggplot(df,aes(x=oleic, y= eicosenoic, color=Region)) + 
+  geom_point()
+p5<-ggplot(df,aes(x=oleic, y= eicosenoic, color=as.factor(Region))) + 
+  geom_point()
+graphs <- arrangeGrob(grobs = list(t2,p4,p5), ncol = 1,nrow = 3,heights = c(4,10,10))
+oleicXeicosenoicXRegion <- as_ggplot(graphs)
+```
+
+The generated scatter plots looks like ths:
+  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+oleicXeicosenoicXRegion
+```
+  
+##### Analysis  
+_Creating the scatterplot by defining numeric values of Region makes it more difficult to interpret the data. Even though there are clear boundaries, we cannot identify which shade of color is mapped to its region. However, creating the scatterplot with Region as a categorical variable makes it quicker to identify the boundaries using a preattentive mechanism to understand which color refers to a region._  
+
+
+***
+
+**4. Create a scatterplot of Oleic vs Eicosenoic in which color is defined by a discretized Linoleic (3 classes), shape is defined by a discretized Palmitic (3 classes) and size is defined by a discretized Palmitoleic (3 classes). How difficult is it to differentiate between 27=3* 3* 3 different types of observations? What kind of perception problem is demonstrated by this graph?**  
+
+```{r message=FALSE, warning=FALSE}
+
+#plotting the fourth graph
+
+intervaldf$linoleicinterval3 <- cut_interval(df$linoleic,n = 3)
+intervaldf$palmiticinterval3 <- cut_interval(df$palmitic,n = 3)
+intervaldf$palmitoleicinterval3 <- cut_interval(df$palmitoleic,n = 3)
+
+p6<-ggplot(df,aes(x=oleic, y= eicosenoic, color=intervaldf$linoleicinterval3,
+                  shape = intervaldf$palmiticinterval3, size = intervaldf$palmitoleicinterval3)) + 
+  geom_point()+ 
+  ggtitle("Dependency of Oleic over Eicosenoic based on \nLinoleic Level, Palmiticin and Palmitoleic")+
+  labs(color = "Linoleic Interval", shape = "Palmiticin Interval", size = "Palmitoleic Interval")
+
+```
+  
+The dependency of Oleic over Eicosenoic based on  different Linoleic Level, Palmiticin and Palmitoleic is shown in the following plot:  
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p6
+```
+  
+##### Analysis  
+_It is very difficult to differentiate between the 3 * 3 * 3 classes of observation because dealing with a large number of categories or dimensions can be mentally taxing for viewers to process and remember the distinctions between them. There's also a risk of misinterpretation from using too many colors and sizes, which can lead to confusion, and some visual cues are less effective than others. There is a relative judgement error to be noted in the graph. The plotted values have similar positions along the common scale which make them difficult to be recogonised. Added to that problem is areal recognition. Too many features to a single value is tiresome for the brain as the attendive perception uses only short term memory. Even though palmiticin interval uses different hues for effective recognition it does not say anything about its value scale. Seeing different colors would make brain interpret the values to be independent of each other and overlook the fact that each color represent a value in the amount of Palmiticin in the oil. Here perspective problem arises._  
+
+
+***
+
+**5. Create a scatterplot of Oleic vs Eicosenoic in which color is defined by Region, shape is defined by a discretized Palmitic (3 classes) and size is defined by a discretized Palmitoleic (3 classes). Why is it possible to clearly see a decision boundary between Regions despite many aesthetics are used? Explain this phenomenon from the perspective of Treisman’s theory.**  
+
+```{r message=FALSE, warning=FALSE}
+#plotting the fifth graph
+
+p7<-ggplot(df,aes(x=oleic, y= eicosenoic, color=Region,
+                  shape = intervaldf$palmiticinterval3, size = intervaldf$palmitoleicinterval3)) + 
+  geom_point()+ 
+  ggtitle("Dependency of Oleic over Eicosenoic based on \nRegion, Palmiticin and Palmitoleic")+
+  labs(color = "Region", shape = "Palmiticin Interval", size = "Palmitoleic Interval")
+```
+  
+The dependency of Oleic over Eicosenoic based on  different Region, Palmiticin and Palmitoleic is shown in the following plot:  
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p7
+```
+  
+##### Analysis  
+_It is possible to see a decision boundary clearly because according to Treisman’s theory, it is possible to differentiate between colors quickly, which is very obvious in this plot. Once the boundaries have been identified, we can then use focused attention to identify various shapes and gather more data_  
+
+
+***
+
+**6. Use Plotly to create a pie chart that shows the proportions of oils coming from different Areas. Hide labels in this plot and keep only hover-on labels. Which problem is demonstrated by this graph?**  
+
+```{r message=FALSE, warning=FALSE}
+#plotting the sixth graph
+
+p8 <- plot_ly(data=df,labels=~factor(Area), type = "pie", hoverinfo ='label', textinfo = "none")%>%
+  layout(title= "Areal Distribution of Oil Production", showlegend = F)
+```
+
+  
+The resulting graph is as follows:  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p8
+```
+  
+##### Analysis  
+_Human perception cannot be relied on when observing this graph because we cannot accurately determine the angle or size of each section by just looking at it. Relative judgement based on angle in compromised here. It causes scaling and perspective problem to arise._  
+
+  
+***
+**7. Create a 2d-density contour plot with Ggplot2 in which you show dependence of Linoleic vs Eicosenoic. Compare the graph to the scatterplot using the same variables and comment why this contour plot can be misleading.**  
+
+```{r message=FALSE, warning=FALSE}
+
+#plotting the seventh graph
+t3 <- textGrob("Comparison of Density contour and Relational Scatter plot between Linoleic and Eicosenoic")
+p9<-ggplot(df,aes(x=linoleic, y= eicosenoic)) +
+  geom_density_2d()
+p10<-ggplot(df,aes(x=linoleic, y= eicosenoic)) + 
+  geom_point()
+
+graphs1 <- arrangeGrob(grobs = list(t3,p9,p10), ncol = 1,nrow = 3, heights = c(1,10,10))
+linoleicXeicosenoic <- as_ggplot(graphs1)
+```
+  
+The resulting graph is as follows:  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+linoleicXeicosenoic
+```
+
+  
+  
+##### Analysis  
+_Comparing the two graphs, it is seen that the density plot is obscuring certain patterns. in areas of high density on the scatterplot, the density plot displays a lower value of density, or no data is represented at all. The appearance of the density plot can be highly sensitive to the arrangement and distribution of data points, where the appearance of clusters and patterns may differ, potentially leading to misinterpretation._
+
+
+***
+
+>Assignment 2
+
+Following are the libraries used for the successful completion of this assignment:  
+plotly  
+MASS  
+xlsx  
+tidyr  
+
+  
+Here is how we loaded our libraries:  
+
+```{r message=FALSE, warning=FALSE}
+library(plotly)
+library(MASS)
+library(xlsx)
+library(tidyr)
+```
+***
+**1. Load the file to R and answer whether it is reasonable to scale these data in order to perform a multidimensional scaling (MDS).**  
+
+```{r message=FALSE, warning=FALSE}
+
+#Reading the baseball data
+baseball = read.xlsx(file = "baseball-2016.xlsx",sheetIndex = 1)
+row.names(baseball) <- baseball$Team
+```
+
+  
+The loaded dataframe looks like this:
+```{r echo= FALSE}
+knitr::kable(
+  baseball[1:6, 1:6]
+)
+knitr::kable(
+  baseball[1:6, 7:12]
+)
+knitr::kable(
+  baseball[1:6, 13:18]
+)
+knitr::kable(
+  baseball[1:6, 19:24]
+)
+knitr::kable(
+  baseball[1:6, 25:28]
+)
+```
+It has 30 observations and 28 variables namely:  
+Team, League, Won, Lost, Runs.per.game, HR.per.game, AB, Runs, Hits, X2B, X3B, HR, RBI, StolenB, CaughtS, BB, SO, BAvg, OBP, SLG, OPS, TB, GDP, HBP, SH, SF, IBB and LOB.  
+
+The Summary of the table is as follows:
+```{r echo= FALSE}
+summary(baseball)
+```
+  
+  
+##### Analysis  
+_Scaling is necessary because we have values ranging from 0.235 up to 5670, which makes the data very complex and difficult to visualize in its raw form._  
+  
+***
+  
+**2. Write an R code that performs a non-metric MDS with Minkowski distance=2 of the data (numerical columns) into two dimensions. Visualize the resulting observations in Plotly as a scatter plot in which observations are colored by League. Does it seem to exist a difference between the leagues according to the plot? Which of the MDS components seem to provide the best differentiation between the Leagues? Which baseball teams seem to be outliers?**  
+
+```{r message=FALSE, warning=FALSE}
+#Plotting the first graph
+baseball.numeric= scale(baseball[,3:27])
+d=dist(baseball.numeric)
+
+res=isoMDS(d,k = 2, p=2)
+coords=res$points
+
+coordsMDS=as.data.frame(coords)
+coordsMDS$Team=rownames(coordsMDS)
+coordsMDS$League=baseball$League
+
+b1 <- plot_ly(coordsMDS, x=~V1, y=~V2, type="scatter",mode= "markers" ,color= ~League, hovertext = ~Team, colors = "Set1")
+```
+  
+The Scatter plot looks as follows:  
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+b1
+```
+
+  
+  
+##### Analysis  
+_The position of the teams appear to be almost equally distributed among the leagues. Even then the V2 variable some how can differentiate the Leagues by a faint boundary. Around -1.5 value of the V2 variable we can differentiate between two leagues. Based on the here defined boundary some Teams from the NL League can be categorised as outliers like St. Louis Cardinals, NY Mets, Los Angels Dodgers,San Diego Padres,Philadelphia Phillies, Milwaukee Brewers and Chicago cubs which are located beyond the boundary._  
+
+  
+  
+***
+  
+**3. Use Plotly to create a Shepard plot for the MDS performed and comment about how successful the MDS was. Which observation pairs were hard for the MDS to map successfully?**  
+
+```{r message=FALSE, warning=FALSE}
+#Plotting the second graph
+sh <- Shepard(d, coords)
+delta <-as.numeric(d)
+D<- as.numeric(dist(coords))
+
+n=nrow(coords)
+index=matrix(1:n, nrow=n, ncol=n)
+index1=as.numeric(index[lower.tri(index)])
+
+n=nrow(coords)
+index=matrix(1:n, nrow=n, ncol=n, byrow = T)
+index2=as.numeric(index[lower.tri(index)])
+
+
+
+b2 <- plot_ly()%>%
+  add_markers(x=~delta, y=~D, hoverinfo = 'text',
+              text = ~paste('Obj1: ', rownames(baseball)[index1],
+                            '<br> Obj 2: ', rownames(baseball)[index2]))%>%
+  add_lines(x=~sh$x, y=~sh$yf)
+```
+
+  
+The Shepherd's Plot is as below:  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+b2
+```
+
+  
+  
+##### Analysis  
+_The MDS does not seem very successful because a strong linear relationship between dissimilarities was not observed. This can be seen clearly because the shepard plot’s line does not closely follow a straight diagonal line, despite the data points forming a close cluster around the line. The most difficult observation pairs to map successfully were the Minnesota Twins and Aizona Diamondbacks. This pair is seen as an outlier despite not having the highest dissimilarities._  
+
+  
+  
+  
+***
+  
+**4. Produce series of scatterplots in which you plot the MDS variable that was the best in the differentiation between the leagues in step 2 against all other numerical variables of the data. Pick up two scatterplots that seem to show the strongest (positive or negative)**  
+
+```{r message=FALSE, warning=FALSE}
+# Plotting the third graph
+baseball$SuperVar <- coordsMDS$V2
+
+
+b3 <- baseball %>%
+  gather(-Team, -League, -SuperVar, key = "var", value = "value") %>% 
+  ggplot(aes(x = value, y = SuperVar)) +
+  geom_point(color ="Blue") +
+  facet_wrap(~ var, ncol = 7, scales = "free")
+```
+
+The grid plot looks as below:  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+b3
+```
+
+  
+  
+##### Analysis  
+_The two strongest scatterplots are as follows:_  
+
+**SuperVar against SF:**  _On this graph, most of the data points are clustered from left to right in a negative slope, in between values ranging from 30 to 50, with a few outliers located around the 60 mark._  
+
+**SuperVar against X3B:** _Here the data points are more clustered towards the center of the graph, in between values of 18 and 40. Some extreme outliers are seen below 10 and around 50._   
+
+_These two graphs were chosen because they demonstrate a close relationship between the two variables being plotted, making it easier to make predictions and draw meaningful conclusions about the data._  
+
+  
+***
+   
+## STATEMENT OF CONTRIBUTION
+For the first assignment coding was done by Greeshma Jeev and the Analysis part was done by Olayemi. We both went through the outputs and the analysis to make our own suggestions to the results inorder to make this report a grand success.
+  
+As for the second assignment since we both are new to the MDS and its application in R, we both sat together and learned on various aspects of MDS and its coding in R by going through Lecture Slides, Textbooks and Web browsing. Different ambiguities aroused while working on it and they were cleared by discussing with different classmates and those which remained even after discussions were rectified by Mr Oleg. After getting a clearer understanding of the assignment the coding for the assignment was done by Greeshma Jeev. As for most of the coding in this assignment templates were already available we both found more time in discussing and defending our analysis and findings in the assignment.
+
+The RMD file was designed together and coded by Greeshma Jeev. Content writing was done by both Olayemi and Greeshma Jeev.
+
+  
+***
+  
+  
+> APPENDIX
+
+#### Code for Assignment 1 (Olive Data)
+  
+```{r message=FALSE, warning=FALSE, eval=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+library(ggpubr)
+library(plotly)
+library(grid)
+# Read the file
+df <-  read.csv("olive.csv")
+sumdf <- summary(df)
+
+#ploting the first graph
+p<-ggplot(df,aes(x=palmitic, y=oleic, color=linoleic)) + 
+  geom_point()+
+  ggtitle("Dependency of Palmitic over Oleic based on Linoleic")
+
+intervaldf <- data.frame(cut_interval(df$linoleic,n = 4))
+colnames(intervaldf) <- "linoleicinterval4"
+
+p1<-ggplot(df,aes(x=palmitic, y=oleic, color=intervaldf$linoleicinterval4)) + 
+  geom_point()+ 
+  ggtitle("Dependency of Palmitic over Oleic based on Linoleic Level")+
+  labs(color = "Linoleic Interval")
+
+
+#plotting the second graph
+t1 <- textGrob("Comparison of different graphs on \n Dependency of Palmitic over Oleic based on Linoleic Level")
+p1<-ggplot(df,aes(x=palmitic, y=oleic, color=intervaldf$linoleicinterval4)) + 
+  geom_point()+ labs(color = "Linoleic Interval")
+p2<-ggplot(df,aes(x=palmitic, y=oleic,  size=intervaldf$linoleicinterval4)) + 
+  geom_point()+ labs(size = "Linoleic Interval")
+p3<-ggplot(df,aes(x=palmitic, y=oleic)) +
+  geom_point()+ geom_spoke(aes(angle = as.integer(intervaldf$linoleicinterval4)), radius = 50)
+graphs <- arrangeGrob(grobs = list(t1,p1,p2,p3), ncol = 1,nrow = 4,heights = c(4,10,10,10))
+palmiticXoleicXlinoleic <- as_ggplot(graphs)
+palmiticXoleicXlinoleic 
+
+
+#plotting the third graph
+t2 <- textGrob("Comparison of different graphs on \n Dependency of Oleic over Eicosenoic based on Region")
+p4<-ggplot(df,aes(x=oleic, y= eicosenoic, color=Region)) + 
+  geom_point()
+p5<-ggplot(df,aes(x=oleic, y= eicosenoic, color=as.factor(Region))) + 
+  geom_point()
+graphs <- arrangeGrob(grobs = list(t2,p4,p5), ncol = 1,nrow = 3,heights = c(4,10,10))
+oleicXeicosenoicXRegion <- as_ggplot(graphs)
+oleicXeicosenoicXRegion
+
+#plotting the fourth graph
+
+intervaldf$linoleicinterval3 <- cut_interval(df$linoleic,n = 3)
+intervaldf$palmiticinterval3 <- cut_interval(df$palmitic,n = 3)
+intervaldf$palmitoleicinterval3 <- cut_interval(df$palmitoleic,n = 3)
+
+p6<-ggplot(df,aes(x=oleic, y= eicosenoic, color=intervaldf$linoleicinterval3,
+                  shape = intervaldf$palmiticinterval3, size = intervaldf$palmitoleicinterval3)) + 
+  geom_point()+ 
+  ggtitle("Dependency of Oleic over Eicosenoic based on Linoleic Level, Palmiticin and Palmitoleic")+
+  labs(color = "Linoleic Interval", shape = "Palmiticin Interval", size = "Palmitoleic Interval")
+
+
+#plotting the fifth graph
+
+p7<-ggplot(df,aes(x=oleic, y= eicosenoic, color=Region,
+                  shape = intervaldf$palmiticinterval3, size = intervaldf$palmitoleicinterval3)) + 
+  geom_point()+ 
+  ggtitle("Dependency of Oleic over Eicosenoic based on Region, Palmiticin and Palmitoleic")+
+  labs(color = "Region", shape = "Palmiticin Interval", size = "Palmitoleic Interval")
+
+
+#plotting the sixth graph
+
+p8 <- plot_ly(data=df,labels=~factor(Area), type = "pie", hoverinfo ='label', textinfo = "none")%>%
+  layout(title= "Areal Distribution of Oil Production", showlegend = F)
+
+
+#plotting the seventh graph
+t3 <- textGrob("Comparison of Density contour and Relational Scatter plot between Linoleic and Eicosenoic")
+p9<-ggplot(df,aes(x=linoleic, y= eicosenoic)) +
+  geom_density_2d()
+p10<-ggplot(df,aes(x=linoleic, y= eicosenoic)) + 
+  geom_point()
+
+graphs1 <- arrangeGrob(grobs = list(t3,p9,p10), ncol = 1,nrow = 3, heights = c(1,10,10))
+linoleicXeicosenoic <- as_ggplot(graphs1)
+```
+  
+  
+***
+
+  
+#### Code for Assignment 2 (Baseball Data)
+  
+  
+```{r message=FALSE, warning=FALSE, eval=FALSE}
+library(plotly)
+library(MASS)
+library(xlsx)
+library(tidyr)
+
+#Reading the baseball data
+baseball = read.xlsx(file = "baseball-2016.xlsx",sheetIndex = 1)
+row.names(baseball) <- baseball$Team
+summary(baseball)
+
+#Plotting the first graph
+baseball.numeric= scale(baseball[,3:27])
+d=dist(baseball.numeric)
+
+res=isoMDS(d,k = 2, p=2)
+coords=res$points
+
+coordsMDS=as.data.frame(coords)
+coordsMDS$Team=rownames(coordsMDS)
+coordsMDS$League=baseball$League
+
+b1 <- plot_ly(coordsMDS, x=~V1, y=~V2, type="scatter",mode= "markers" ,color= ~League, hovertext = ~Team, colors = "Set1")
+
+#Plotting the second graph
+sh <- Shepard(d, coords)
+delta <-as.numeric(d)
+D<- as.numeric(dist(coords))
+
+n=nrow(coords)
+index=matrix(1:n, nrow=n, ncol=n)
+index1=as.numeric(index[lower.tri(index)])
+
+n=nrow(coords)
+index=matrix(1:n, nrow=n, ncol=n, byrow = T)
+index2=as.numeric(index[lower.tri(index)])
+
+
+
+b2 <- plot_ly()%>%
+  add_markers(x=~delta, y=~D, hoverinfo = 'text',
+              text = ~paste('Obj1: ', rownames(baseball)[index1],
+                            '<br> Obj 2: ', rownames(baseball)[index2]))%>%
+  add_lines(x=~sh$x, y=~sh$yf)
+
+
+# Plotting the third graph
+baseball$SuperVar <- coordsMDS$V2
+
+
+b3 <- baseball %>%
+  gather(-Team, -League, -SuperVar, key = "var", value = "value") %>% 
+  ggplot(aes(x = value, y = SuperVar)) +
+  geom_point(color ="Blue") +
+  facet_wrap(~ var, ncol = 7, scales = "free")
+```
+
+***

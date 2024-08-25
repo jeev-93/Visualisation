@@ -1,0 +1,659 @@
+---
+title: "Group_7"
+author: "Greeshma Jeev Koothuparambil and Olayemi Morrison"
+date: "19/09/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This report is submitted by Greeshma Jeev Koothuparambil and Olayemi Morrison as a part of Laboratory 3 of Visualization (732A98) Course for the 2023 Autumn Semester.
+
+>Assignment 1
+  
+Following are the libraries used for the successful completion of this assignment:  
+plotly  
+dplyr  
+tidyr  
+
+
+Here is how we loaded our libraries:  
+
+```{r message=FALSE, warning=FALSE}
+library(plotly)
+library(dplyr)
+library(tidyr)
+```
+***
+#### Reading the the file aegypti_albopictus.csv in to the dataframe  
+
+```{r message=FALSE, warning=FALSE}
+#Read the file
+mos <- read.csv("aegypti_albopictus.csv")
+mos$VECTOR <- as.factor(mos$VECTOR)
+
+```
+The loaded dataframe looks like this:
+```{r echo= FALSE}
+knitr::kable(
+  mos[1:6, 1:6]
+)
+knitr::kable(
+  mos[1:6, 7:12]
+)
+```
+It has 42066 observations and 12 variables namely:  
+VECTOR, OCCURRENCE_ID, SOURCE_TYPE, LOCATION_TYPE, POLYGON_ADMIN, Y, X, YEAR, COUNTRY, COUNTRY_ID, GAUL_AD0, STATUS  
+The Summary of the table is as follows:
+```{r echo= FALSE}
+summary(mos)
+```
+***
+
+
+**1. Use MapBox interface in Plotly to create two dot maps (for years 2004 and 2013) that show the distribution of the two types of mosquitos in the world (use color to distinguish between mosquitos). Analyze which countries and which regions in these countries had high density of each mosquito type and how the situation changed between these time points. What perception problems can be found in these plots?**  
+
+```{r message=FALSE, warning=FALSE}
+#Load the token
+Sys.setenv('MAPBOX_TOKEN' = 'pk.eyJ1IjoiamVldjA5MyIsImEiOiJjbG1ub3pweG4wNzNlMmxvOW16YXZweWk3In0.SPpearIXO9zLMb9cbxL2GQ')  
+
+#Plotting the first map
+p1 <-mos %>% filter(YEAR == 2004) %>% plot_mapbox()%>%add_trace(type="scattermapbox",lat=~Y, lon=~X,
+                               color=~VECTOR, colors = c("Red", "Blue"))
+p1 <- p1 %>% layout(
+  mapbox=list(
+    style="open-street-map")
+)
+
+p2 <-mos %>% filter(YEAR == 2013) %>% plot_mapbox()%>%
+  add_trace(type="scattermapbox",lat=~Y, lon=~X,color=~VECTOR, colors = c("Red", "Blue"), showlegend = FALSE)
+p2 <- p2 %>% layout(
+  mapbox=list(
+    style="open-street-map")
+)
+
+annotations = list( 
+  list( 
+    x = 0.2,  
+    y = 1.02,  
+    text = "2004",
+    showarrow =F),
+  list( 
+    x = 0.2,  
+    y = 0.5,  
+    text = "2013",
+    showarrow =F))
+plot1 <- subplot(p1,p2, nrows = 2) %>% layout(annotations= annotations)
+
+```
+  
+The plot looks like this:  
+  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+plot1
+```
+  
+##### Analysis  
+_Both 2004 and 2013 showed significant levels of mosquito distribution._  
+**2004:**  
+_For the year, the concentration of Aedes mosquitoes are seen mostly in South-Eastern parts of the USA, Easter parts of Mexico, Eastern parts of Brazil, South Western parts of India, Southern parts of Indonesia, Southern parts of Taiwan. Relatively high density of Aedes albopictus can be seen in Eastern parts of the USA , East and South East Asian countries especially in Taiwan._  
+_As for Aedes Aegypti, heavy clusters can be seen in Southern parts of North America, Northern parts of South America especially in Brazil, South India,South Eastern Asian countries and Taiwan._  
+**2013:**  
+_For the year 2013 , the concentration of Aedes mosquitoes are seen mostly in S. The density of Aedes albopictus can be seen in southern parts of Europe and Taiwan. As for Aedes Aegypti, the density increased tremendously in Brazil and is visible in South Eastern Asian countries and Taiwan._  
+
+_As from the graphs, it is visible that the concentration of Aedes mosquitoes were concentrated mostly in the Third World Nations. And it is evident that most of them took severe measures in controlling the spread as well as the eradication of the mosquitoes especially the Aedes Aegypti. But Clearly the measures taken by Taiwan as well as Brazil were not seen to be effective as there is a severe increase in the concentration of the mosquitoes in Brazil and concentration of mosquitoes spread all over the country in both Brazil and Taiwan within 10 years._  
+**Perception Problem:**   
+_The graph contains over 42000 observations plotted in. So there is an obvious case of overplotting where many cases go unnoticed as in the case of the presence of Aedes Aegypti in Taiwan. The graph here is a Mercator projection which gives the land area in a distorted manner. The problem of Ebbinghaus Illusion arises in the name of the area. The countries with lower areas might appear huge and vice versa. There is also the problem of neglecting the intensity of the case in the name of the area in the graph; especially in the case of Taiwan; since its area is small and in the case of the USA as the smaller cluster of cases in the large area of the US._   
+
+
+  
+***
+  
+**2. Compute Z as the numbers of mosquitos per country detected during all study period. Use plot_geo() function to create a choropleth map that shows Z values. This map should have an Equirectangular projection. Why do you think there is so little information in the map?**  
+
+```{r message=FALSE, warning=FALSE}
+#Plotting the second map
+
+#forming a new dataframe to calculate the cases per country over the period
+countrydat <- mos %>% 
+  group_by(COUNTRY,COUNTRY_ID) %>% 
+  count(COUNTRY)
+colnames(countrydat)[3] <- "Z"
+
+g <- list(
+  projection = list(type = 'equirectangular') #Equirectangular Projection
+)
+
+p <- plot_geo(countrydat) %>%
+  add_trace(z = ~Z, color = ~Z, colors = 'Reds',
+    text = ~COUNTRY, locations = ~COUNTRY_ID)%>%
+  layout(title = "Cases per countryover the period",geo=g)
+```
+  
+The graph on cases per country look like this:  
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p
+```
+  
+  
+##### Analysis  
+_The observed data lacks information on several countries, that is we have only information on 151 countries. These countries remain unplotted due to the absence of data. Also the number of cases is not scaled at all. The number of cases per country varies from 1 to 24,837. The next largest value after 24,837 (Taiwan) is 8501(Brazil). Compared to the large countries, Taiwan(139th out of 195 in terms of area), is a small country and the largest value won't be visible without closer inspection._  
+
+
+  
+***
+  
+**3. Create the same kind of maps as in step 2 but use**  
+**a. Equirectangular projection with choropleth color log (ZZ)**  
+**b. Conic equal area projection with choropleth color log (ZZ)** 
+**Analyze the map from step 3a and make conclusions. Compare maps from 3a and 3b and comment which advantages and disadvantages you may see with both types of maps.**  
+
+```{r message=FALSE, warning=FALSE}
+#Plotting the third map
+
+g <- list(
+  projection = list(type = 'equirectangular')#Equirectangular Projection
+)
+
+p3 <- plot_geo(countrydat) %>%
+  add_trace(z = ~log(Z), color = ~log(Z), colors = 'Reds',
+            text = ~COUNTRY, locations = ~COUNTRY_ID)%>%
+  layout(geo=g)
+
+g1 <- list(
+  projection = list(type = 'conic equal area')#Conic Equal Area Projection
+)
+
+p4 <- plot_geo(countrydat) %>%
+  add_trace(z = ~log(Z), color = ~log(Z), colors = 'Reds',
+            text = ~COUNTRY, locations = ~COUNTRY_ID)%>%
+  layout(geo=g1)
+
+annotations1 = list( 
+  list( 
+    x = 0.2,  
+    y = 1.02,  
+    text = "Equirectangular Projection",
+    showarrow =F),
+  list( 
+    x = 0.2,  
+    y = 0.5,  
+    text = "Conic Equal Area Projection",
+    showarrow =F))
+plot3 <- subplot(p3,p4, nrows = 2)%>% layout(annotations= annotations1)
+
+```
+  
+The comparison graph on Equirectangular and Conic Equal Area Projection is as below:  
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+plot3
+```
+
+  
+  
+##### Analysis  
+_Compared to the plot in the second question the graphs here seem to make more sense. This is because of the scaling of the Z value by taking log. It reduces the scale of the data while preserving its nature. Here the map shows the increasing intensity of the cases more effectively._  
+
+_Between the graphs the Equirectangular Projection is easier to understand. It gives out a major outlook in the first look compared to conical projection. But the area of the lands are heavily distorted in equirectangular projections. The intensity might appear heavy when comparing the data of the countries closer to the poles to the tropical countries. This is because the area projection increases with the increased latitude. This is not the case with conical equal area projection maps as they preserve the area of places effectively._  
+
+
+
+  
+***
+  
+**4. In order to resolve problems detected in step 1, use data from 2013 only for Brazil and**  
+**a. Create variable X1 by cutting X into 100 piecies (use cut_interval() )**  
+**b. Create variable Y1 by cutting Y into 100 piecies (use cut_interval() )**  
+**c. Compute mean values of X and Y per group (X1,Y1) and the amount of observations N per group (X1,Y1)**  
+**d. Visualize mean X,Y and N by using MapBox**  
+**Identify regions in Brazil that are most infected by mosquitoes. Did such discretization help in analyzing the distribution of mosquitoes?**  
+
+```{r message=FALSE, warning=FALSE}
+#Plotting the fourth map
+
+brazildata <-mos %>% filter(YEAR == 2013 & COUNTRY_ID =="BRA")
+brazildata$X1 <- cut_interval(brazildata$X, 100)
+brazildata$Y1 <- cut_interval(brazildata$Y, 100)
+
+
+brazilmoddata <- brazildata %>%
+  select(VECTOR,COUNTRY, COUNTRY_ID, X1, Y1,X, Y)%>%
+  group_by(X1, Y1) %>% mutate(MeanX = mean(X), MeanY= mean(Y), N = n())
+
+plotdatabrazil <- brazilmoddata[!duplicated(brazilmoddata[,c("X1","Y1")]),]
+
+p5 <-plotdatabrazil %>% plot_mapbox()%>%add_trace(type="scattermapbox",lat=~MeanY, lon=~MeanX,
+                                                                color=~N)
+p5 <- p5 %>% layout(
+  mapbox=list(
+    style="open-street-map")
+)
+
+```
+  
+  
+  
+The resulting graph is as follows:  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p5
+```
+
+  
+  
+##### Analysis  
+_The higher concentration of mosquitoes are seen in the eastern parts of Brazil. Especially in the states of Rio Grande Do Norte, Paraíba,Pernambuco,Alagoas,Ceará, Sergipe, Bahia, Rio Grande Do Sul, Paraná, São Paulo, Rio de Janeiro, Goiás. The interesting finding in the map is that Santa Catarina despite being in between Rio Grande Do Sul and Paraná managed to contain their spread of Aedes mosquitoes._   
+_The discretization has not helped much as for the interpretation of the graph. Even though the number of observations was reduced from 8501 to 1955, plotting a continuous variable with over 1000 observations with a continuous colour scheme is beyond human channel capacity to perceive features._  
+
+
+***
+
+>Assignment 2
+
+Following are the libraries used for the successful completion of this assignment:  
+plotly  
+dplyr  
+tidyr  
+ggplot2  
+MASS  
+akima  
+
+
+
+Here is how we loaded our libraries:  
+
+```{r message=FALSE, warning=FALSE}
+library(plotly)
+library(ggplot2)
+library(tidyr)
+library(MASS)
+library(dplyr)
+library(akima)
+```
+***
+
+**1. Download a relevant map of Swedish counties from http://gadm.org/country and load it into R. Read your data into R and process it in such a way that different age groups are shown in different columns. Let’s call these groups Young, Adult and Senior.**
+
+#### Reading the the file income.csv in to the dataframe  
+
+```{r message=FALSE, warning=FALSE}
+#Reading the file and renaming the columns for easy readability.
+df <- read.csv("income.csv")
+description <- c("County", "Age", "Income")
+colnames(df)<- description
+
+```
+The data (df) has 63 observations and 3 variables namely:
+COUNTY, AGE, INCOME.
+
+The summary of the table is as follows:  
+```{r echo= FALSE}
+summary(df)
+```
+***
+
+
+Next we processed the data to show the different age groups in different columns.
+```{r message=FALSE, warning=FALSE}
+# Transform the data to be categorized by age groups and rename columns to 'Young', 'Adult' and 'Senior'.
+df_pivot <- df %>% pivot_wider(names_from = Age, values_from = Income) %>% rename(Young = '18-29 years', Adult = '30-49 years', Senior = '50-64 years')
+
+
+# Removing the leading numbers and "county" from the County column for better matching
+df_pivot$County <- sub("\\d+\\s+", "", df_pivot$County)
+
+df_pivot$County <- sub("\\s+county$", "", df_pivot$County)
+
+```
+It has 21 observations and 4 variables namely:  
+COUNTY, YOUNG, ADULT, SENIOR  
+The Summary of the table is as follows:
+```{r echo= FALSE}
+summary(df_pivot)
+```
+***
+
+
+**2. Create a plot in Plotly containing three violin plots showing mean income distributions per age group. Analyze this plot and interpret your analysis in terms of income.**  
+
+```{r message=FALSE, warning=FALSE}
+# Creating the Violin plot 
+violin_plot <- df_pivot %>% plot_ly(x = ~factor("Young"), y = ~Young, type = 'violin', 
+                                    box = list(visible = TRUE), meanline = list(visible = TRUE), name = "Young") %>% add_trace(x= ~factor("Adult"), 
+                                    y = ~Adult, type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE), name = "Adult") %>% add_trace(x= ~factor("Senior"), y = ~Senior, type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE), name = "Senior") %>% layout(title = "Income Distribution by Age Group", xaxis = list(title = "Age Group"), yaxis = list(title = "Income"))
+
+```
+  
+The plot looks like this:  
+  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+violin_plot
+
+```
+  
+##### Analysis  
+_The income earned by the Young age group is much lower that the Adult and Senior group. This could be as a result of experience, which increases as the citizens get older, but we do not have enough data to draw this conclusion._
+
+**Young**  
+_For the Young age group, the average income is 339.49 SEK (in thousands), with the minimum and maximum income being 306.7SEK and 418.9SEK respectively. There is a thick density around the median value of 334.4 SEK whcih indicates that majority of the income is distributed around this value. There are no visible outliers on this plot._  
+ 
+**Adult**  
+_For the Adult age group, the average income is 548.419 SEK (in thousands), with the minimum and maximum income being 503.2 SEK and 716.4 SEK respectively. This plot has a longer tail which indicates the presence of outliers which is causing the data to be a bit skewed._  
+
+**Senior**  
+_For the Senior age group, the average income is 572.1143 SEK (in thousands), with the minimum and maximum income being 521.5 SEK and 742.5 SEK respectively. Majority of the income is distributed around the median value which is 551.6 SEK. There is a clear outlier at the top of the plot with the value of 742.5 SEK._  
+
+***
+  
+**3. Create a surface plot in Plotly showing dependence of Senior incomes on Adult and Young incomes in various counties. What kind of trend can you see and how can this be interpreted? Do you think that linear regression would be suitable to model this dependence?**  
+
+```{r message=FALSE, warning=FALSE}
+#Creating the surface plot:
+attach(df_pivot)
+s=interp(Young,Adult,Senior, duplicate = "mean")
+detach(df_pivot)
+
+df_surfaceplot <- plot_ly(x=~s$x, y=~s$y, z=~s$z, type="surface")%>% 
+  layout(scene = list(xaxis = list(title = "Young Income"), yaxis = list(title = "Adult Income"), zaxis = list(title = "Senior Income")), title = "Dependence of Senior Incomes on Adult and Young Incomes")
+
+
+```
+  
+The surface plot on the dependence of Senior Incomes on Adult and Young Incomes look like this:  
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+df_surfaceplot
+
+```
+  
+  
+##### Analysis  
+_There is an upward slope, indicating a positive correlation between the three age groups. It is impossible to identify any outliers or gather more information, therefore a linear regression would be more suitable to model this dependence._  
+
+
+  
+***
+  
+**4. Use plot_geo function with trace “choropleth” to visualize incomes of Young and Adults in two choropleth maps. Analyze these maps and make conclusions. Is there any new information that you could not discover in previous statistical plots?**  
+
+```{r message=FALSE, warning=FALSE}
+# Using plot_geo for the maps in plotly:
+library(rjson)
+json<-fromJSON(file="gadm41_SWE_1.json")
+
+#See the structure of some region:
+print(json$features[[6]]$properties)
+
+#plotly
+g=list(fitbounds="locations", visible=TRUE)
+p_young<-plot_geo(df_pivot)%>%add_trace(type="choropleth",geojson=json, locations=~County,
+                                  z=~Young, featureidkey="properties.NAME_1")%>%
+  layout(geo=g)
+
+
+p_adult <-plot_geo(df_pivot)%>%add_trace(type="choropleth",geojson=json, locations=~County,
+                                          z=~Adult, featureidkey="properties.NAME_1")%>%
+  layout(geo=g)
+
+
+```
+  
+The respective maps for Young and Adult incomes is as below:  
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p_young
+
+p_adult
+
+```
+
+  
+  
+##### Analysis  
+_These graphs help us drill further down and see which regions have the highest and lowest incomes. In both graphs, Stockholm had the highest income for Young and Adult age groups, while Västerbotten was the region with the lowest income of 306.7 SEK (in thousands) for the Young age group map, and Gävleborg was the region with the lowest incomes for the Adult age group with 503.2SEK (thousands)._  
+
+
+***
+  
+**5. Use GPVisualizer http://www.gpsvisualizer.com/geocoder/ and extract the coordinates of Linköping. Add a red dot to the choropleth map for Young from step 4 in order to show where we are located :) **  
+
+```{r message=FALSE, warning=FALSE}
+#plotting Linkoping location
+p<-plot_geo(df_pivot)%>%add_trace(type="choropleth",geojson=json, locations=~County,
+                                     z=~Young, featureidkey="properties.NAME_1")%>%
+  add_trace(type="scattergeo",lat=58.41109, lon=15.62565,
+                            colors="red",  geojson=json)%>%layout(geo=g)
+
+
+```
+  
+  
+  
+The resulting graph is as follows:  
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+p
+```
+
+
+
+
+***
+
+   
+## STATEMENT OF CONTRIBUTION
+For the first assignment coding and analysis was done by Greeshma Jeev, while for the second assignment, coding and analysis part was done by Olayemi. We both went through the outputs and the analysis to make our own suggestions to the results in order to make this report a grand success.
+  
+For the second assignment, in question4, we noticed that the Income data came with extra information in the county column, which made plotting difficult. We were able to achieve success after doing some research and data manipulation to extra only the county name into the county column and the maps were successfully plotted. 
+
+The RMD file was designed together and coded by both Greeshma and Olayemi. Content writing was done by both Olayemi and Greeshma Jeev.
+
+  
+***
+  
+  
+> APPENDIX
+
+#### Code for Assignment 1 (aegypti_albopictus Data)
+  
+```{r message=FALSE, warning=FALSE, eval=FALSE}
+# Set the working directory
+setwd("R/")
+
+#Read the libraries
+
+library(plotly)
+library(dplyr)
+library(tidyr)
+
+#Read the file
+mos <- read.csv("aegypti_albopictus.csv")
+mos$VECTOR <- as.factor(mos$VECTOR)
+
+#Load the token
+Sys.setenv('MAPBOX_TOKEN' = 'pk.eyJ1IjoiamVldjA5MyIsImEiOiJjbG1ub3pweG4wNzNlMmxvOW16YXZweWk3In0.SPpearIXO9zLMb9cbxL2GQ')  
+
+#Plotting the first map
+p1 <-mos %>% filter(YEAR == 2004) %>% plot_mapbox()%>%add_trace(type="scattermapbox",lat=~Y, lon=~X,
+                               color=~VECTOR, colors = c("Red", "Blue"))
+p1 <- p1 %>% layout(
+  mapbox=list(
+    style="open-street-map")
+)
+
+
+p2 <-mos %>% filter(YEAR == 2013) %>% plot_mapbox()%>%
+  add_trace(type="scattermapbox",lat=~Y, lon=~X,color=~VECTOR, colors = c("Red", "Blue"), showlegend = FALSE)
+p2 <- p2 %>% layout(
+  mapbox=list(
+    style="open-street-map")
+)
+
+annotations = list( 
+  list( 
+    x = 0.2,  
+    y = 1.02,  
+    text = "2004",
+    showarrow =F),
+  list( 
+    x = 0.2,  
+    y = 0.5,  
+    text = "2013",
+    showarrow =F))
+plot1 <- subplot(p1,p2, nrows = 2) %>% layout(annotations= annotations)
+plot1
+
+ 
+#Plotting the second map
+
+#forming a new dataframe to calculate the cases per country over the period
+countrydat <- mos %>% 
+  group_by(COUNTRY,COUNTRY_ID) %>% 
+  count(COUNTRY)
+colnames(countrydat)[3] <- "Z"
+
+g <- list(
+  projection = list(type = 'equirectangular') #Equirectangular Projection
+)
+
+p <- plot_geo(countrydat) %>%
+  add_trace(z = ~Z, color = ~Z, colors = 'Reds',
+    text = ~COUNTRY, locations = ~COUNTRY_ID)%>%
+  layout(title = "Cases per countryover the period",geo=g)
+
+#Plotting the third map
+
+g <- list(
+  projection = list(type = 'equirectangular')#Equirectangular Projection
+)
+
+p3 <- plot_geo(countrydat) %>%
+  add_trace(z = ~log(Z), color = ~log(Z), colors = 'Reds',
+            text = ~COUNTRY, locations = ~COUNTRY_ID)%>%
+  layout(geo=g)
+
+g1 <- list(
+  projection = list(type = 'conic equal area')#Conic Equal Area Projection
+)
+
+p4 <- plot_geo(countrydat) %>%
+  add_trace(z = ~log(Z), color = ~log(Z), colors = 'Reds',
+            text = ~COUNTRY, locations = ~COUNTRY_ID)%>%
+  layout(geo=g1)
+
+annotations1 = list( 
+  list( 
+    x = 0.2,  
+    y = 1.02,  
+    text = "Equirectangular Projection",
+    showarrow =F),
+  list( 
+    x = 0.2,  
+    y = 0.5,  
+    text = "Conic Equal Area Projection",
+    showarrow =F))
+plot3 <- subplot(p3,p4, nrows = 2)%>% layout(annotations= annotations1)
+
+#Plotting the fourth map
+
+brazildata <-mos %>% filter(YEAR == 2013 & COUNTRY_ID =="BRA")
+brazildata$X1 <- cut_interval(brazildata$X, 100)
+brazildata$Y1 <- cut_interval(brazildata$Y, 100)
+
+
+brazilmoddata <- brazildata %>%
+  select(VECTOR,COUNTRY, COUNTRY_ID, X1, Y1,X, Y)%>%
+  group_by(X1, Y1) %>% mutate(MeanX = mean(X), MeanY= mean(Y), N = n())
+
+plotdatabrazil <- brazilmoddata[!duplicated(brazilmoddata[,c("X1","Y1")]),]
+
+p5 <-plotdatabrazil %>% plot_mapbox()%>%add_trace(type="scattermapbox",lat=~MeanY, lon=~MeanX,
+                                                                color=~N)
+p5 <- p5 %>% layout(
+  mapbox=list(
+    style="open-street-map")
+)
+
+```
+  
+  
+***
+
+  
+#### Code for Assignment 2 (Swedish Income Household)
+  
+  
+```{r message=FALSE, warning=FALSE, eval=FALSE}
+# loading the libraries
+
+library(plotly)
+library(ggplot2)
+library(tidyr)
+library(MASS)
+library(dplyr)
+library(akima)
+
+#Question 2.1
+#Reading the file and renaming the columns for easy readability.
+df <- read.csv("income.csv")
+description <- c("County", "Age", "Income")
+colnames(df)<- description
+
+# Transform the data to be categorized by age groups and rename columns to 'Young', 'Adult' and 'Senior'.
+df_pivot <- df %>% pivot_wider(names_from = Age, values_from = Income) %>% rename(Young = '18-29 years', Adult = '30-49 years', Senior = '50-64 years')
+
+# Removing the leading numbers and "county" from the County column for better matching
+df_pivot$County <- sub("\\d+\\s+", "", df_pivot$County)
+
+df_pivot$County <- sub("\\s+county$", "", df_pivot$County)
+
+# Question 2.2
+# Creating the Violin plot 
+violin_plot <- df_pivot %>% plot_ly(x = ~factor("Young"), y = ~Young, type = 'violin', 
+                                    box = list(visible = TRUE), meanline = list(visible = TRUE), name = "Young") %>% add_trace(x= ~factor("Adult"), 
+                                    y = ~Adult, type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE), name = "Adult") %>% add_trace(x= ~factor("Senior"), y = ~Senior, type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE), name = "Senior") %>% layout(title = "Income Distribution by Age Group", xaxis = list(title = "Age Group"), yaxis = list(title = "Income"))
+violin_plot
+
+#Question 2.3
+#Creating the surface plot:
+attach(df_pivot)
+s=interp(Young,Adult,Senior, duplicate = "mean")
+detach(df_pivot)
+
+df_surfaceplot <- plot_ly(x=~s$x, y=~s$y, z=~s$z, type="surface")%>% 
+  layout(scene = list(xaxis = list(title = "Young Income"), yaxis = list(title = "Adult Income"), zaxis = list(title = "Senior Income")), title = "Dependence of Senior Incomes on Adult and Young Incomes")
+df_surfaceplot
+
+# Question 2.4
+# Using plot_geo for the maps in plotly:
+library(rjson)
+json<-fromJSON(file="gadm41_SWE_1.json")
+
+#See the structure of some region:
+print(json$features[[9]]$properties)
+
+#plotly
+g=list(fitbounds="locations", visible=TRUE)
+p_young<-plot_geo(df_pivot)%>%add_trace(type="choropleth",geojson=json, locations=~County,
+                                  z=~Young, featureidkey="properties.NAME_1")%>%
+  layout(geo=g)
+p_young
+
+p_adult <-plot_geo(df_pivot)%>%add_trace(type="choropleth",geojson=json, locations=~County,
+                                          z=~Adult, featureidkey="properties.NAME_1")%>%
+  layout(geo=g)
+p_adult
+
+#Question 2.5
+#plotting Linkoping location
+p<-plot_geo(df_pivot)%>%add_trace(type="choropleth",geojson=json, locations=~County,
+                                     z=~Young, featureidkey="properties.NAME_1")%>%
+  add_trace(type="scattergeo",lat=58.41109, lon=15.62565,
+                            color="Set2",  geojson=json)%>%layout(geo=g)
+p
+
+```
+
+***
